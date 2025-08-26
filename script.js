@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const signatureModal = document.getElementById('signature-modal');
     const openSignatureModalBtn = document.getElementById('open-signature-modal-btn');
     const closeSignatureModalBtn = document.getElementById('close-signature-modal-btn');
+    const saveSignaturesBtn = document.getElementById('save-signatures-btn');
     const employeeSignatureCanvas = document.getElementById('employee-signature-canvas');
     const employerSignatureCanvas = document.getElementById('employer-signature-canvas');
     const clearEmployeeSignatureBtn = document.getElementById('clear-employee-signature');
@@ -22,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State ---
     let employeeSignaturePad, employerSignaturePad;
+    let isSignaturePadInitialized = false;
 
     // --- Constants ---
     const DRAFT_STORAGE_KEY = 'timesheetDraft';
@@ -47,7 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Signature Pad Logic ---
     const initializeSignaturePads = () => {
-        console.log("Initializing signature pads...");
+        if (isSignaturePadInitialized) {
+            console.log("Signature pads already initialized.");
+            return;
+        }
+        console.log("Initializing signature pads for the first time...");
         try {
             const adjustCanvas = (canvas) => {
                 const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -57,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             adjustCanvas(employeeSignatureCanvas);
             adjustCanvas(employerSignatureCanvas);
+
             employeeSignaturePad = new SignaturePad(employeeSignatureCanvas, { backgroundColor: 'rgb(255, 255, 255)' });
             employerSignaturePad = new SignaturePad(employerSignatureCanvas, { backgroundColor: 'rgb(255, 255, 255)' });
 
@@ -66,9 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(draft.signatures.employee) employeeSignaturePad.fromDataURL(draft.signatures.employee);
                 if(draft.signatures.employer) employerSignaturePad.fromDataURL(draft.signatures.employer);
             }
-
-            employeeSignaturePad.onEnd = () => { console.log("Employee signature updated."); saveSignaturesToDraft(); };
-            employerSignaturePad.onEnd = () => { console.log("Employer signature updated."); saveSignaturesToDraft(); };
+            isSignaturePadInitialized = true;
             console.log("Signature pads initialized successfully.");
         } catch(error) {
             console.error("Failed to initialize signature pads.", error);
@@ -84,12 +89,18 @@ document.addEventListener('DOMContentLoaded', () => {
             employer: employerSignaturePad.isEmpty() ? null : employerSignaturePad.toDataURL()
         };
         saveToStorage(DRAFT_STORAGE_KEY, draft);
+        console.log("Signatures saved.");
+        signatureModal.style.display = 'none'; // Close modal after saving
     };
 
-    openSignatureModalBtn.addEventListener('click', () => signatureModal.style.display = 'flex');
+    openSignatureModalBtn.addEventListener('click', () => {
+        signatureModal.style.display = 'flex';
+        initializeSignaturePads(); // Initialize pads when modal is opened
+    });
     closeSignatureModalBtn.addEventListener('click', () => signatureModal.style.display = 'none');
-    clearEmployeeSignatureBtn.addEventListener('click', () => { employeeSignaturePad.clear(); saveSignaturesToDraft(); });
-    clearEmployerSignatureBtn.addEventListener('click', () => { employerSignaturePad.clear(); saveSignaturesToDraft(); });
+    saveSignaturesBtn.addEventListener('click', saveSignaturesToDraft);
+    clearEmployeeSignatureBtn.addEventListener('click', () => employeeSignaturePad.clear());
+    clearEmployerSignatureBtn.addEventListener('click', () => employerSignaturePad.clear());
 
     // --- Core Application Logic ---
     const initDateSelector = () => {
@@ -230,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return [cells[0].textContent, cells[1].textContent, inputs[0].value || '-', inputs[1].value || '-', inputs[2].value, cells[5].textContent];
                 } else if (row.classList.contains('weekly-total-row')) {
                     const cells = row.querySelectorAll('td');
-                    const total = cells[1] ? cells[1].textContent : '0.00 h'; // Get total from the correct cell
+                    const total = cells[1] ? cells[1].textContent : '0.00 h';
                     return { content: `Total Semaine: ${total}`, styles: { halign: 'right', fontStyle: 'bold' } };
                 }
             }).filter(Boolean);
@@ -282,23 +293,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Initialisation ---
-    const draft = loadDraft();
+    loadDraft();
     initDateSelector();
-    initializeSignaturePads();
-    if (draft && draft.table && draft.table.length > 0) {
-        console.log("Generating table from existing draft data.");
-        generateTable(draft);
-    }
+    console.log("Application fully initialized and event listeners attached.");
 
     // --- Event Listeners ---
     generateBtn.addEventListener('click', () => {
         console.log("'Générer le tableau' button clicked.");
         const draft = getFromStorage(DRAFT_STORAGE_KEY);
-        if (draft) {
-            draft.table = [];
-            saveToStorage(DRAFT_STORAGE_KEY, draft);
-        }
-        generateTable();
+        generateTable(draft);
     });
     downloadBtn.addEventListener('click', downloadPDF);
     employeeNameInput.addEventListener('input', saveDraft);

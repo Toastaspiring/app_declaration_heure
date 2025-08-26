@@ -1,7 +1,5 @@
 # Générateur de Fiche d'Heures
 
-[https://toastaspiring.github.io/app_declaration_heure/](https://toastaspiring.github.io/app_declaration_heure/)
-
 ## Aperçu du Projet
 
 Le Générateur de Fiche d'Heures est une application web monopage conçue pour simplifier la création, la gestion et l'exportation de fiches d'heures mensuelles. C'est un outil complet qui s'adresse aussi bien aux employés qu'aux employeurs, en automatisant les calculs et en offrant des fonctionnalités avancées telles que la sauvegarde de brouillons et les signatures numériques.
@@ -50,4 +48,3 @@ Le projet est intentionnellement simple et ne contient que deux fichiers princip
 
 -   `index.html` : Ce fichier contient la structure HTML de l'application, les styles CSS (via Tailwind) et les références aux bibliothèques JavaScript.
 -   `script.js` : Ce fichier contient toute la logique de l'application, y compris la génération du tableau, les calculs, la gestion du stockage local (brouillons, modèles, signatures) et la génération du PDF.
-
