@@ -10,24 +10,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- jsPDF-AutoTable pour créer des tableaux dans le PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-    <!-- html2canvas pour convertir un élément HTML en image pour le PDF (gardé en cas de besoin) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- SignaturePad.js pour la signature -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Style pour l'élément qui sera imprimé en PDF pour un rendu optimal */
-        #pdf-content {
-            width: 210mm; /* Largeur d'une page A4 */
-            padding: 15mm;
-            color: #000;
-            background-color: #fff;
-        }
-        /* Cache le loader par défaut */
-        #loader {
-            display: none;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        #loader { display: none; }
+        .signature-canvas { border: 2px dashed #ccc; border-radius: 8px; cursor: crosshair; }
+        #signature-modal { transition: opacity 0.3s ease-in-out; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 p-4 sm:p-6 md:p-8">
@@ -51,9 +41,7 @@
             <div class="flex items-end gap-4">
                 <div class="flex-grow">
                     <label for="month" class="block text-sm font-medium text-gray-700 mb-1">Mois</label>
-                    <select id="month" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-                        <!-- Les options du mois seront générées par JavaScript -->
-                    </select>
+                    <select id="month" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></select>
                 </div>
                 <div class="flex-grow">
                     <label for="year" class="block text-sm font-medium text-gray-700 mb-1">Année</label>
@@ -61,40 +49,48 @@
                 </div>
             </div>
             <div class="flex items-end">
-                <button id="generate-btn" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-300">
-                    Générer le tableau
-                </button>
+                <button id="generate-btn" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">Générer le tableau</button>
             </div>
         </div>
 
-        <!-- Conteneur pour la fiche d'heures qui sera affichée et convertie en PDF -->
-        <div id="timesheet-container" class="overflow-x-auto">
-            <!-- Le tableau des heures sera injecté ici par JavaScript -->
-        </div>
+        <div id="timesheet-container" class="overflow-x-auto"></div>
 
-        <!-- Section du total et du bouton de téléchargement -->
-        <div id="summary-section" class="mt-8 text-right hidden">
-            <div class="inline-block bg-gray-100 p-4 rounded-lg">
-                <span class="text-lg font-medium text-gray-700">Total des heures du mois :</span>
-                <span id="monthly-total" class="text-2xl font-bold text-indigo-600">0.00 h</span>
-            </div>
-            <div class="mt-6 flex justify-end items-center gap-4">
-                 <div id="loader" class="flex items-center gap-2 text-gray-600">
-                    <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Génération du PDF...</span>
+        <!-- Action Buttons Section -->
+        <div id="actions-section" class="mt-8 hidden">
+            <div class="flex justify-between items-center">
+                 <button id="open-signature-modal-btn" class="bg-gray-200 text-gray-800 font-bold py-3 px-6 rounded-md hover:bg-gray-300">Ajouter les signatures</button>
+                 <div class="flex items-center gap-4">
+                    <div id="loader" class="flex items-center gap-2 text-gray-600">
+                        <svg class="animate-spin h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span>Génération du PDF...</span>
+                    </div>
+                    <button id="download-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-md hover:bg-green-700">Télécharger en PDF</button>
                 </div>
-                <button id="download-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-300">
-                    Télécharger en PDF
-                </button>
             </div>
         </div>
     </div>
 
-    <!-- Élément caché qui sera utilisé pour la génération du PDF -->
-    <div id="pdf-content" class="hidden absolute -left-full"></div>
+    <!-- Modal pour les signatures -->
+    <div id="signature-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-4xl">
+            <h2 class="text-2xl font-bold text-center mb-6">Signatures</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Signature de l'employé(e)</label>
+                    <canvas id="employee-signature-canvas" class="signature-canvas w-full h-48"></canvas>
+                    <button id="clear-employee-signature" class="w-full mt-2 bg-gray-200 text-gray-700 py-1 rounded-md hover:bg-gray-300">Effacer</button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Signature de l'employeur</label>
+                    <canvas id="employer-signature-canvas" class="signature-canvas w-full h-48"></canvas>
+                    <button id="clear-employer-signature" class="w-full mt-2 bg-gray-200 text-gray-700 py-1 rounded-md hover:bg-gray-300">Effacer</button>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end gap-4">
+                <button id="close-signature-modal-btn" class="bg-gray-500 text-white font-bold py-2 px-5 rounded-md hover:bg-gray-600">Fermer</button>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js" defer></script>
 </body>
